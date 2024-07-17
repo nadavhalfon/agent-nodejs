@@ -301,8 +301,10 @@ export default class MongooseCollection extends BaseCollection {
     lookupProjection: Projection,
   ): PipelineStage[] {
     const fieldsUsedInFilters = FilterGenerator.listRelationsUsedInFilter(filter);
+    const fieldsUsedInSort = FilterGenerator.listRelationsUsedInFilter(filter, true);
 
     return [
+      ...(fieldsUsedInSort.size ? FilterGenerator.filter(this.model, this.stack, filter, true) : []),
       ...ReparentGenerator.reparent(this.model, this.stack),
       ...VirtualFieldsGenerator.addVirtual(this.model, this.stack, lookupProjection),
       // For performance reasons, we want to only include the relationships that are used in filters

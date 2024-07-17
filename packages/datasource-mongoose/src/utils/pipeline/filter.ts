@@ -16,23 +16,23 @@ const STRING_OPERATORS = ['Match', 'NotContains', 'LongerThan', 'ShorterThan'];
 
 /** Transform a forest admin filter into mongo pipeline */
 export default class FilterGenerator {
-  static filter(model: Model<unknown>, stack: Stack, filter: PaginatedFilter): PipelineStage[] {
+  static filter(model: Model<unknown>, stack: Stack, filter: PaginatedFilter, onlySort = false): PipelineStage[] {
     const fields = new Set<string>();
     const tree = filter?.conditionTree;
     const match = this.computeMatch(model, stack, tree, fields);
     const sort = this.computeSort(filter?.sort);
 
     const pipeline = [];
-    if (fields.size) pipeline.push(this.computeFields(fields));
-    if (match) pipeline.push({ $match: match });
+    if (fields.size && !onlySort) pipeline.push(this.computeFields(fields));
+    if (match && !onlySort) pipeline.push({ $match: match });
     if (sort) pipeline.push({ $sort: sort });
-    if (filter?.page?.skip !== undefined) pipeline.push({ $skip: filter.page.skip });
-    if (filter?.page?.limit !== undefined) pipeline.push({ $limit: filter.page.limit });
+    if (filter?.page?.skip !== undefined && !onlySort) pipeline.push({ $skip: filter.page.skip });
+    if (filter?.page?.limit !== undefined && !onlySort) pipeline.push({ $limit: filter.page.limit });
 
     return pipeline;
   }
 
-  static listRelationsUsedInFilter(filter: PaginatedFilter): Set<string> {
+  static listRelationsUsedInFilter(filter: PaginatedFilter, onlySort = false): Set<string> {
     const fields = new Set<string>();
 
     if (filter?.sort) {
@@ -40,6 +40,8 @@ export default class FilterGenerator {
         this.listPaths(s.field).forEach(field => fields.add(field));
       });
     }
+
+    if (onlySort) return fields;
 
     this.listFieldsUsedInFilterTree(filter?.conditionTree, fields);
 
